@@ -39,9 +39,7 @@
 
 ## What This Does
 
-<!-- Three or four sentences: what a user asks for, and what they get back. -->
-
-
+FitFindr helps a shopper turn a simple clothing request into a realistic thrift-find recommendation. A user asks for something like a vintage graphic tee under $30, the app searches the listing data for the best match, suggests an outfit using the user’s wardrobe when available, and then writes a short social-style fit card caption. The result is a one-step workflow that turns a natural-language query into a curated outfit idea and a shareable product summary.
 
 ---
 
@@ -59,24 +57,24 @@
 
 ### `search_listings`
 
-- **What it does:**
-- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" -->
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Searches the thrift listings for the best matches to a shopping description, with optional size and price filters.
+- **Inputs:** `description` (str), `size` (str | None), `max_price` (float | None)
+- **Returns:** A list of matching listing dicts sorted by score, each containing fields such as `id`, `title`, `price`, `size`, `platform`, `category`, and `description`.
+- **When it has nothing:** An empty list.
 
 ### `suggest_outfit`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Takes a selected thrift find and a wardrobe dictionary and returns an outfit suggestion that fits the item and the user’s clothes.
+- **Inputs:** `new_item` (dict), `wardrobe` (dict)
+- **Returns:** A non-empty string with one or two outfit suggestions, naming items from the wardrobe when available and otherwise giving general styling advice.
+- **When it has nothing:** An empty string.
 
 ### `create_fit_card`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Writes a short, social-style caption that describes the find and how it fits into an outfit.
+- **Inputs:** `outfit` (str), `new_item` (dict)
+- **Returns:** A two-to-four sentence caption string that mentions the item, its price, and the platform in a natural, post-like tone.
+- **When it has nothing:** A descriptive fallback string instead of raising an exception.
 
 ---
 
@@ -93,7 +91,7 @@
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Branch rule:**
+**Branch rule:** If `search_listings` returns an empty list, put a message in the session and stop. Otherwise, take the first result and go to `suggest_outfit`.
 
 **Where it lives:** `agent.py::run_agent`
 

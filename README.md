@@ -58,7 +58,7 @@ FitFindr helps a shopper turn a simple clothing request into a realistic thrift-
 ### `search_listings`
 
 - **What it does:** Searches the thrift listings for the best matches to a shopping description, with optional size and price filters.
-- **Inputs:** `description` (str), `size` (str | None), `max_price` (float | None)
+- **Inputs:** `description` (str), `size` (str | None; case-insensitive whole-label/token match, so `M` matches `S/M` but not `XL` or `US 9`), `max_price` (float | None)
 - **Returns:** A list of matching listing dicts sorted by score, each containing fields such as `id`, `title`, `price`, `size`, `platform`, `category`, and `description`.
 - **When it has nothing:** An empty list.
 

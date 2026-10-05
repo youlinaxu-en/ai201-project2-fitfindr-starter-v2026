@@ -95,9 +95,9 @@ FitFindr helps a shopper turn a simple clothing request into a realistic thrift-
 
 **Where it lives:** `agent.py::run_agent`
 
-**How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->
+**How the query is parsed:** Regular expressions extract a size after the word `size` and a price after `under`, `below`, `less than`, `at most`, or `max`; the remaining text is searched as the item description.
 
-**What moves through the session:** <!-- which fields, in what order -->
+**What moves through the session:** `parsed` goes to `search_results`; the first result becomes `selected_item`, which is passed with `wardrobe` to produce `outfit_suggestion`; that suggestion and the same `selected_item` produce `fit_card`.
 
 ---
 

@@ -39,7 +39,7 @@
 
 ## What This Does
 
-FitFindr helps a shopper turn a simple clothing request into a realistic thrift-find recommendation. A user asks for something like a vintage graphic tee under $30, the app searches the listing data for the best match, suggests an outfit using the user’s wardrobe when available, and then writes a short social-style fit card caption. The result is a one-step workflow that turns a natural-language query into a curated outfit idea and a shareable product summary.
+FitFindr turns a clothing request into a thrifted outfit recommendation. It extracts an optional size and price ceiling from the query, searches and ranks the local listings, then uses the selected item and the user's wardrobe to generate outfit advice and a short fit-card caption. If nothing matches, it stops and tells the user which search constraints to change.
 
 ---
 
@@ -91,7 +91,7 @@ FitFindr helps a shopper turn a simple clothing request into a realistic thrift-
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Branch rule:** If `search_listings` returns an empty list, put a message in the session and stop. Otherwise, take the first result and go to `suggest_outfit`.
+**Branch rule:** In `agent.py::run_agent`, if `search_listings` returns an empty list, set `session["error"]` to a message suggesting changes to the keywords, size, or price limit, then stop without calling `suggest_outfit`. Otherwise, select the first result and continue to `suggest_outfit` and `create_fit_card`.
 
 **Where it lives:** `agent.py::run_agent`
 
@@ -112,23 +112,49 @@ FitFindr helps a shopper turn a simple clothing request into a realistic thrift-
 
 ```
 $ python app.py ask '...'
+  app.py ask "looking for a vintage graphic tee under $30 size M"er-v2026> 
 
+  Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
+
+  Outfit:   **Outfit 1: Y2K Streetwear**
+* **Thrifted Item:** Y2K Baby Tee — Butterfly Print
+* **Wardrobe Pieces:** Baggy straight-leg jeans (dark wash), chunky white sneakers, and black crossbody bag.
+* **Why it works:** The fitted, cropped cut of the baby tee balances the high-waisted, baggy fit of the dark wash jeans for an authentic early 2000s silhouette. Finish with the chunky white sneakers and black crossbody bag.
+
+**Outfit 2: Casual Contrast**
+* **Thrifted Item:** Y2K Baby Tee — Butterfly Print
+* **Wardrobe Pieces:** Wide-leg khaki trousers, brown leather belt, and chunkywhite sneakers.
+* **Why it works:** Pairing the playful pink, purple, and white butterfly graphic tee with neutral wide-leg khaki trousers creates an easy, balanced look. Cinch the trousers with the brown leather belt and complete the outfit with the chunky white sneakers.
+
+  Fit card: Lean into early 2000s nostalgia with this white, pink, and purple Y2K baby tee featuring a sweet butterfly print. Grab this fitted crop top for $18.0 on Depop and style it with baggy dark wash jeans and chunky white sneakersfor an authentic streetwear silhouette.
+
+1 model calls this session, 1 served from cache, 411 prompt + 61 output tokens
 ```
 
 **The three tools, tested one at a time**
 
 ```
-$ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
+$ python -c "from tools import search_listings; print([(item['id'], item['title'], item['price']) for item in search_listings('graphic tee', max_price=30)])"
+[('lst_002', 'Y2K Baby Tee — Butterfly Print', 18.0), ('lst_006', 'Graphic Tee — 2003 Tour Bootleg Style', 24.0), ('lst_017', 'Mesh Long-Sleeve Top — Black', 15.0), ('lst_033', 'Vintage Band Tee — Faded Grey', 19.0), ('lst_011', 'Low-Rise Cargo Pants — Khaki', 27.0), ('lst_015', 'Vintage Graphic Hoodie — Faded Black', 26.0)]
 
 ```
 
 ```
-$ python -c "from tools import suggest_outfit; ..."
+$ python -c "from tools import suggest_outfit; from utils.data_loader import get_example_wardrobe, load_listings; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
+Here is a wearable outfit using the Levi's 501 jeans and your existing wardrobe pieces:
+
+**Outfit: Casual Streetwear**
+* **Thrifted item:** Vintage Levi's 501 Jeans — Medium Wash
+* **Wardrobe pieces:** White ribbed tank top (`w_003`), Vintage black denim jacket (`w_006`), Chunky white sneakers (`w_007`), Brown leather belt (`w_009`), and Black crossbody bag (`w_010`).
+
+**Why it works:**
+Tuck the white ribbed tank top into the medium wash 501s, secure it with the brown leather belt, and layer the slightly cropped black denim jacket on top. Finish the look with the chunky white sneakers and the black crossbody bag for a classic, effortless streetwear combination.
 
 ```
 
 ```
-$ python -c "from tools import create_fit_card; ..."
+$ python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('jeans and white sneakers', load_listings()[0]))"
+Nothing beats the broken-in feel of these vintage Levi's 501 jeans in a classic medium wash. I love how the natural fading at the knees gives them that ultimate worn-in streetwear edge. Grab these blue denim bottoms for $38.0 on depop and pair them with crisp white sneakers for an effortless off-duty look.
 
 ```
 
@@ -145,15 +171,15 @@ $ python -c "from tools import create_fit_card; ..."
 
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I asked Copilot to implement `search_listings` with keyword ranking, optional size and price filters, and an empty-list result when nothing matches.
+- *What came back:* The first search implementation counted every query word. A focused no-match check still returned listings because common words such as `a` and `not` appeared in listing descriptions.
+- *What I changed:* I added stop-word filtering to the query keywords, then reran checks for no matches, size boundaries, and the inclusive price ceiling.
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I asked Copilot to build `agent.py::run_agent` from the README branch rule and keep each result in the session for the next step.
+- *What came back:* The first loop saved the parsed query in the session but passed the local `parsed` variable to `search_listings`, so that handoff did not read the value back from session state.
+- *What I changed:* I changed the search call to use `session["parsed"]`, verified that the selected item passed to `suggest_outfit` was the same object stored in the session, and tested both the matching and no-match branches.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 

@@ -263,16 +263,35 @@ that produced it:
 **Happy path**
 
 ```
-
+[1] parse_query
+      in:  vintage graphic tee under $30 size M
+      out: description='vintage graphic tee', size='M', max_price=30.0
+[2] search_listings (via MCP)
+      in:  search_listings({'description': 'vintage graphic tee', 'size': 'M', 'max_price': 30.0})
+      out: 8 items: Y2K Baby Tee — Butterfly Print, Mesh Long-Sleeve Top — Black, 90s Silk Slip Dress — Floral, Midi Length … +5 more
+[3] suggest_outfit
+      in:  new_item='Y2K Baby Tee — Butterfly Print', wardrobe_items=10
+      out: **Outfit 1: Y2K Streetwear** * **Thrifted Item:** Y2K Baby Tee — Butterfly Print * **Wardrobe Pieces:** Baggy …
+[4] create_fit_card
+      in:  outfit='**Outfit 1: Y2K Streetwear**\n* **Thrifted Item:** Y2K Baby Tee — Butterfly Print\n* **Wardrobe Pieces…
+      out: Channel authentic early 2000s energy with this pink, purple, and white graphic Y2K baby tee. Its cropped, fitt…
 ```
 
 **Empty search**
 
 ```
-
+[1] parse_query
+      in:  designer ballgown size XXS under $5
+      out: description='designer ballgown', size='XXS', max_price=5.0
+[2] search_listings (via MCP)
+      in:  search_listings({'description': 'designer ballgown', 'size': 'XXS', 'max_price': 5.0})
+      out: [] (empty)
 ```
 
-**On the MCP move:** <!-- what changed in your code, and whether anything
+**On the MCP move:** `run_agent` now calls `search_listings` through
+`mcp_client.call_tool`; the outfit and fit-card tools remain direct calls.
+The MCP call returned the same list shape and the query completed normally.
+<!-- what changed in your code, and whether anything
 behaved differently afterwards. If the rewire didn't work, say exactly where it
 broke — the error text and the last thing that worked. That earns the point in
 full. -->

@@ -16,7 +16,8 @@ Build and test your three tools in `tools.py` first. Then come here.
 import re
 
 import trace
-from tools import search_listings, suggest_outfit, create_fit_card
+from mcp_client import call_tool
+from tools import suggest_outfit, create_fit_card
 from generate import ModelUnavailable
 
 
@@ -77,7 +78,8 @@ def run_agent(query: str, wardrobe: dict) -> dict:
          string splitting, or asking the model are all fine — say which you
          chose in your README. Put the result in session["parsed"].
 
-      4. Call search_listings() with what you parsed.
+      4. Call search_listings through mcp_client.call_tool() with what you
+         parsed.
          Put the results in session["search_results"].
 
          ⚠️ THIS IS THE BRANCH. If nothing came back:
@@ -98,13 +100,9 @@ def run_agent(query: str, wardrobe: dict) -> dict:
       8. Return the session.
 
     ─────────────────────────────────────────────────────────────────────────
-    IN UNIT 4 you come back and add two things:
-
-      • Trace calls. One per step. `trace.step("search_listings", inputs=...,
-        returned=...)` — see trace.py. Your README needs the output.
-
-      • A handler for ModelUnavailable, so a bad key produces a message rather
-        than a stack trace. The import is already at the top of this file.
+    Unit 4 additions: the search call uses MCP, and trace.step() records the
+    parsed query and each tool call. A handler for ModelUnavailable, so a bad
+    key produces a message rather than a stack trace, is still to be added.
     """
     session = new_session(query, wardrobe)
     iteration = 0
@@ -145,8 +143,23 @@ def run_agent(query: str, wardrobe: dict) -> dict:
             "max_price": max_price,
         }
         session["parsed"] = parsed
+        trace.step(
+            "parse_query",
+            inputs=query,
+            returned=(
+                f"description={parsed['description']!r}, "
+                f"size={parsed['size']!r}, max_price={parsed['max_price']!r}"
+            ),
+        )
 
-        session["search_results"] = search_listings(**session["parsed"])
+        session["search_results"] = call_tool(
+            "search_listings", session["parsed"]
+        )
+        trace.step(
+            "search_listings (via MCP)",
+            inputs=f"search_listings({session['parsed']!r})",
+            returned=session["search_results"],
+        )
         if not session["search_results"]:
             session["error"] = (
                 "No listings matched. Try broader item keywords, a different "
@@ -158,8 +171,25 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         session["outfit_suggestion"] = suggest_outfit(
             session["selected_item"], session["wardrobe"]
         )
+        wardrobe_items = session["wardrobe"].get("items") or []
+        trace.step(
+            "suggest_outfit",
+            inputs=(
+                f"new_item={session['selected_item'].get('title')!r}, "
+                f"wardrobe_items={len(wardrobe_items)}"
+            ),
+            returned=session["outfit_suggestion"],
+        )
         session["fit_card"] = create_fit_card(
             session["outfit_suggestion"], session["selected_item"]
+        )
+        trace.step(
+            "create_fit_card",
+            inputs=(
+                f"outfit={session['outfit_suggestion']!r}, "
+                f"new_item={session['selected_item'].get('title')!r}"
+            ),
+            returned=session["fit_card"],
         )
 
     return session

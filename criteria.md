@@ -27,6 +27,13 @@ tool calls and returns a fit card — in at least 4 of 5 tries.
 **Why this target:**
 Because the agent's search step relies on relatively simple keyword matching. Some valid queries may use wording that doesn't oeverlap weill with the listing text, causing an occasional search miss even when a relevant listing exists. 4/5 successful tests make workflow is reliably reproducible.
 
+> **Revised after the before run:** Require a matching query to complete all
+> three tools and return a fit card in 5 of 5 tries.
+>
+> **Why tightened:** The before run passed 5/5, exceeding the original 4/5
+> target. Requiring success on every run makes the workflow's reliability
+> expectation stricter without changing the agent or the scenario.
+
 ---
 
 ## 2. An impossible query stops before the second tool

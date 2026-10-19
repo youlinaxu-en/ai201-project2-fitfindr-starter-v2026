@@ -181,6 +181,12 @@ Nothing beats the broken-in feel of these vintage Levi's 501 jeans in a classic 
 - *What came back:* The first loop saved the parsed query in the session but passed the local `parsed` variable to `search_listings`, so that handoff did not read the value back from session state.
 - *What I changed:* I changed the search call to use `session["parsed"]`, verified that the selected item passed to `suggest_outfit` was the same object stored in the session, and tested both the matching and no-match branches.
 
+**Moment 3 — unit 4 evaluation and revision**
+
+- *What I asked for:* I asked Copilot to map each of my five criteria to a scenario, run every scenario five times with caching off, and fill in the run log from the captured outputs.
+- *What came back:* The before evaluation passed all five criteria 5/5, including the full three-tool flow, no-match branch, selected-item handoff, fit-card price, and search price ceiling.
+- *What I changed:* Based on the diagnosis that criterion 1's 4/5 target was looser than its measured 5/5 result, I raised that target to 5/5 without changing agent behavior, then reran all 25 evaluations and recorded the after log. The flow again passed 5/5; this measured against a stricter target but did not demonstrate a code-level performance improvement.
+
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
      Don't fill these in during unit 3.
@@ -291,7 +297,20 @@ all_under_or_equal_30: True
 
 **Diagnoses**
 
-No criterion missed its target in this before run.
+No criterion missed its target in this before run. The five runs produced 5/5
+passes for every criterion, including the 5/5 targets for the empty-search
+branch, state handoff, and fit-card price. There is no failed step or mechanism
+to diagnose from these results: the loop stopped correctly on empty search,
+the selected listing title matched the item passed to `suggest_outfit`, and
+each sampled fit card mentioned the listed price. The search returned six
+results, all priced at or below the $30 ceiling, on each try.
+
+The targets were not uniformly easy: criteria 2 and 3 required 5/5 and passed
+all five times. Criterion 1 allowed one failure (4/5) even though it achieved
+5/5, so I would tighten that target to 5/5 in a future evaluation. I would also
+make criterion 3 compare the full listing dict, not only its title, and test
+criterion 4 across several different items if I want to measure repeated or
+generic openings as well as price accuracy.
 
 
 ---
@@ -336,9 +355,11 @@ No criterion missed its target in this before run.
       out: [] (empty)
 ```
 
-**On the MCP move:** `run_agent` now calls `search_listings` through
-`mcp_client.call_tool`; the outfit and fit-card tools remain direct calls.
-The MCP call returned the same list shape and the query completed normally.
+**On the MCP move:** In `agent.py::run_agent`, I replaced the direct
+`search_listings` call with `mcp_client.call_tool("search_listings", ...)`;
+`suggest_outfit` and `create_fit_card` remain direct calls. The MCP client
+unwrapped the response to the same list-of-listings shape, and both matching
+and empty-search queries behaved as expected afterward.
 <!-- what changed in your code, and whether anything
 behaved differently afterwards. If the rewire didn't work, say exactly where it
 broke — the error text and the last thing that worked. That earns the point in
@@ -355,21 +376,46 @@ full. -->
 
      `python run_eval.py --label after` -->
 
-**What I changed:**
+**What I changed:** Tightened criterion 1's target from 4 of 5 to 5 of 5,
+leaving the agent, tools, and scenarios unchanged. The revision is recorded
+under criterion 1 in `criteria.md`.
 
-**Which failure it was meant to fix:**
+**Which failure it was meant to fix:** No failure occurred in the before run.
+The diagnosis noted that criterion 1's 4-of-5 target was more lenient than its
+observed 5-of-5 performance. This change checks whether the full tool sequence
+continues to succeed on every try under the stricter target.
 
 ### Run Log — After
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. Full three-tool run returns a fit card | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Empty search stops before tool 2 | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Item in session matches item passed on | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Fit card mentions the item's price | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. Over-budget query returns nothing over the limit | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
-**Did it help, and how do I know:**
+The complete five-by-five after run, including all captured outputs and traces,
+is saved in [results/run_2026-10-19_0141_after.md](results/run_2026-10-19_0141_after.md).
+
+**Real output — criterion 1, try 1** (`run_eval.py::run_once` →
+`agent.py::run_agent`):
+
+```text
+- stopped early: no
+- selected_item: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+- search_results: 10
+Fit card:
+Channel peak early 2000s energy with this white Y2K butterfly print baby tee, featuring pastel pink and purple graphics. I styled the cropped, fitted top with baggy dark wash jeans and chunky sneakers for an effortless streetwear fit. Snag this nostalgic piece for $18.00 on Depop.
+```
+
+**Did it help, and how do I know:** Yes. Criterion 1 met the stricter 5-of-5
+target on the after run, matching its before result of 5/5 against the original
+4-of-5 target. The other four criteria also met their existing targets. The
+agent's behavior was deliberately unchanged; the improvement was a more
+demanding reliability bar, not a code fix. This verifies the same behavior
+against the tighter target; it does not demonstrate a change in agent
+performance.
 
 <!-- If it made things worse, say that. Honestly reported, that earns full
      credit and is more interesting than one that worked. -->
@@ -380,9 +426,16 @@ full. -->
 
 ## What's Still Broken
 
-<!-- For each criterion still missed: what you'd do, and why you stopped where
-     you did. "I ran out of time" is fine if it's true. Pretending nothing is
-     left is not. -->
+No criterion missed its target in the after run, so there is no unmet criterion
+to diagnose. The run is still limited in what it proves: criterion 3 checks the
+selected item's title in the traced `suggest_outfit` input, not equality of the
+full listing dict; I would compare all listing fields in a future test, but
+stopped at the title because that is the evidence the current trace records.
+Criterion 4 repeats one selected item, so it verifies the price is retained
+but does not measure whether captions for different items become generic or
+repeat the same opening. I would add distinct-item scenarios to measure that,
+but did not change the five-criterion evaluation in this run. Five successful
+tries also do not prove reliability for every query or every model response.
 
 
 

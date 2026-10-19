@@ -201,17 +201,64 @@ Nothing beats the broken-in feel of these vintage Levi's 501 jeans in a classic 
 
 | Criterion | Target | Try 1 | Try 2 | Try 3 | Try 4 | Try 5 | Verdict |
 |---|---|---|---|---|---|---|---|
-| 1.  |  |  |  |  |  |  |  |
-| 2.  |  |  |  |  |  |  |  |
-| 3.  |  |  |  |  |  |  |  |
-| 4.  |  |  |  |  |  |  |  |
-| 5.  |  |  |  |  |  |  |  |
+| 1. Full three-tool run returns a fit card | 4 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 2. Empty search stops before tool 2 | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 3. Item in session matches item passed on | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 4. Fit card mentions the item's price | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
+| 5. Over-budget query returns nothing over the limit | 5 of 5 | PASS | PASS | PASS | PASS | PASS | MET (5/5) |
 
-**Real output from one try**, pasted as text, naming the file and function
-that produced it:
+**Real output from one try per criterion**
 
+All five runs for each scenario, including their tool traces and generated
+outputs, are saved in [results/run_2026-10-19_0126_before.md](results/run_2026-10-19_0126_before.md).
+The captured outputs below were produced by `run_eval.py::run_once` calling
+`agent.py::run_agent`, except the exact price list, which was returned by
+`mcp_client.py::call_tool`.
+
+**Criterion 1 — matching query completes**
+
+```text
+- stopped early: no
+- selected_item: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+- search_results: 10
+Fit card:
+Channel major throwback energy with this white Y2K butterfly print baby tee, featuring cute pink and purple graphics. Grab it on Depop for $18 to effortlessly anchor baggy denim or wide-leg trousers.
 ```
 
+**Criterion 2 — impossible query stops early**
+
+```text
+- stopped early: yes — No listings matched. Try broader item keywords, a different size, or a higher or removed price limit.
+- selected_item: (none)
+- search_results: 0
+Trace:
+[1] parse_query
+      in:  designer ballgown size XXS under $5
+      out: description='designer ballgown', size='XXS', max_price=5.0
+[2] search_listings (via MCP)
+      in:  search_listings({'description': 'designer ballgown', 'size': 'XXS', 'max_price': 5.0})
+      out: [] (empty)
+```
+
+**Criterion 3 — selected item reaches outfit tool**
+
+```text
+- selected_item: Y2K Baby Tee — Butterfly Print ($18.0, depop)
+[3] suggest_outfit
+      in:  new_item='Y2K Baby Tee — Butterfly Print', wardrobe_items=10
+```
+
+**Criterion 4 — fit card preserves item facts**
+
+```text
+This white, pink, and purple Y2K baby tee brings major nostalgic energy with its sweet butterfly graphic. I love styling the fitted cropped top with baggy dark-wash jeans and a black denim jacket for an effortless streetwear silhouette. Score this piece on Depop for $18.00.
+```
+
+**Criterion 5 — search respects price ceiling**
+
+```text
+[('lst_002', 18.0), ('lst_006', 24.0), ('lst_017', 15.0), ('lst_033', 19.0), ('lst_011', 27.0), ('lst_015', 26.0)]
+all_under_or_equal_30: True
 ```
 
 ---
@@ -236,14 +283,15 @@ that produced it:
 
 | # | Criterion | Target | Verdict | How I decided |
 |---|---|---|---|---|
-| 1 |  |  |  |  |
-| 2 |  |  |  |  |
-| 3 |  |  |  |  |
-| 4 |  |  |  |  |
-| 5 |  |  |  |  |
+| 1 | Full three-tool run returns a fit card | 4 of 5 | MET (5/5) | All five runs returned a fit card after the search, outfit, and fit-card steps. |
+| 2 | Empty search stops before tool 2 | 5 of 5 | MET (5/5) | All five traces end after the empty MCP search and return the change-constraints message. |
+| 3 | Item in session matches item passed on | 5 of 5 | MET (5/5) | The selected item title matches `suggest_outfit`'s traced `new_item` on all five runs. |
+| 4 | Fit card mentions the item's price | 5 of 5 | MET (5/5) | All five captions mention the selected item's listed $18 price. |
+| 5 | Over-budget query returns nothing over the limit | 5 of 5 | MET (5/5) | All six returned prices were at most $30 in each of the five scenario runs. |
 
 **Diagnoses**
 
+No criterion missed its target in this before run.
 
 
 ---
